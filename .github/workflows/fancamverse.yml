@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Validate Python syntax
+        run: python -m py_compile fancamverse.py
+
       - name: Process one Drive item
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
@@ -41,4 +44,9 @@ jobs:
           MAX_SOURCES_PER_RUN: "1"
           CLIPS_PER_SOURCE: "3"
           CLIP_SECONDS: "24"
-        run: python fancamverse.py
+        run: |
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_JSON" ] || [ -z "$FANCAMVERSE_ROOT_FOLDER_ID" ]; then
+            echo "::notice::Add Google Drive secrets to enable scheduled processing."
+            exit 0
+          fi
+          python fancamverse.py
