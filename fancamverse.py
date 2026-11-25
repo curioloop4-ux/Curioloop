@@ -155,7 +155,7 @@ def load_metadata(video_path, drive_files):
             data = json.loads(tmp.read_text(encoding="utf-8"))
         except Exception:
             data = {}
-    parts = [p.strip() for p in re.split(r"__|_", base) if p.strip()]
+    parts = [p.strip().replace("_", " ") for p in base.split("__") if p.strip()]
     for key, idx in [("group", 0), ("member", 1), ("song", 2), ("event", 3)]:
         if not data.get(key) and len(parts) > idx:
             data[key] = parts[idx].replace("-", " ").title()
@@ -230,8 +230,10 @@ def process_source(service, inbox_id, review_id, processed_id, source, all_files
         print(f"REVIEW_READY: {output.name} ({start}-{end}s)")
     service.files().update(
         fileId=source["id"],
+        addParents=processed_id,
+        removeParents=inbox_id,
         body={"appProperties": {"fancamverse_status": "review_ready"}},
-        fields="id,appProperties"
+        fields="id,parents,appProperties"
     ).execute()
     print(f"PROCESSED_SOURCE: {source_name}")
 
@@ -246,16 +248,13 @@ def main():
     inbox_id = find_or_create_folder(service, "INBOX", ROOT_ID)
     review_id = find_or_create_folder(service, "REVIEW", ROOT_ID)
     processed_id = find_or_create_folder(service, "PROCESSED", ROOT_ID)
-    query = (
-        f"'{inbox_id}' in parents and trashed=false and "
-        "(mimeType contains 'video/')"
-    )
+    query = f"'{inbox_id}' in parents and trashed=false"
     result = service.files().list(
         q=query, pageSize=100, orderBy="createdTime",
         fields="files(id,name,mimeType,appProperties,createdTime)"
     ).execute()
     files = result.get("files", [])
-    pending = [f for f in files if (f.get("appProperties") or {}).get("fancamverse_status") != "review_ready"]
+    pending = [f for f in files if f.get("mimeType", "").startswith("video/") and (f.get("appProperties") or {}).get("fancamverse_status") != "review_ready"]
     if not pending:
         print("No new videos in FANCAMVERSE/INBOX.")
         return
