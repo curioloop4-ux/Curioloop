@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.env
+secrets/
+tmp/
+work/
+outputs/
+*.mp4
+*.mov
+*.wav
