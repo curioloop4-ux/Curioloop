@@ -1,0 +1,44 @@
+name: FANCAMVERSE Drive Processor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fancamverse-drive-processor
+  cancel-in-progress: false
+
+jobs:
+  process-drive-inbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Process one Drive item
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          FANCAMVERSE_ROOT_FOLDER_ID: ${{ secrets.FANCAMVERSE_ROOT_FOLDER_ID }}
+          MAX_SOURCES_PER_RUN: "1"
+          CLIPS_PER_SOURCE: "3"
+          CLIP_SECONDS: "24"
+        run: python fancamverse.py
